@@ -51,17 +51,30 @@ def save_status(status):
     with open(STATUS_FILE, "w") as f:
         json.dump(status, f)
 
-def check_uptime():
-    target_url = os.environ.get("TARGET_URL")
-    if not target_url:
-        print("Error: TARGET_URL environment variable not set.")
-        sys.exit(1)
+import argparse
+from dotenv import load_dotenv
 
+# Load environment variables from .env if present (for local testing)
+load_dotenv()
+
+def check_uptime(test_mode=False):
+    target_url = os.environ.get("TARGET_URL")
     discord_webhook = os.environ.get("DISCORD_WEBHOOK_URL")
     telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    
+    # Masking secrets for logging
+    if discord_webhook:
+        print(f"Discord Webhook configured: {discord_webhook[:35]}...")
+    
+    if test_mode:
+        print("running in TEST MODE")
+    elif not target_url:
+        print("Error: TARGET_URL environment variable not set.")
+        sys.exit(1)
 
-    print(f"Checking {target_url} at {datetime.now()}...")
+    if not test_mode:
+        print(f"Checking {target_url} at {datetime.now()}...")
 
     # Load previous state
     state = load_status()
@@ -88,6 +101,20 @@ def check_uptime():
         error_details = str(e)
 
     # Logic for notifications and state update
+    if test_mode:
+        print("Test mode enabled. Sending test notification...")
+        msg = "🧪 **TEST NOTIFICATION**: This is a test message from your Uptime Monitor."
+        if discord_webhook:
+            send_discord_notification(discord_webhook, msg)
+        else:
+            print("Discord webhook URL not provided.")
+            
+        if telegram_token and telegram_chat_id:
+             send_telegram_notification(telegram_token, telegram_chat_id, msg)
+        else:
+            print("Telegram not configured.")
+        return True
+
     if is_currently_down:
         if not was_down:
             # IT JUST WENT DOWN
@@ -132,4 +159,7 @@ def check_uptime():
     return True # Always return true so workflow doesn't fail unless script crashes
 
 if __name__ == "__main__":
-    check_uptime()
+    parser = argparse.ArgumentParser(description="Check website uptime")
+    parser.add_argument("--test", action="store_true", help="Send a test notification")
+    args = parser.parse_args()
+    check_uptime(test_mode=args.test)

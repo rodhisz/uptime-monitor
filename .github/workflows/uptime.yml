@@ -5,6 +5,12 @@ on:
     # Run every 1 minute
     - cron: '*/1 * * * *'
   workflow_dispatch: # Allows manual run from GitHub UI
+    inputs:
+      test_mode:
+        description: 'Run in Test Mode (Send test notification)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   check-uptime:
@@ -31,7 +37,12 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python check_uptime.py
+        run: |
+          if [ "${{ github.event.inputs.test_mode }}" == "true" ]; then
+            python check_uptime.py --test
+          else
+            python check_uptime.py
+          fi
 
       - name: Commit and Push Status
         if: always() # Run even if the script fails (although script now returns True always, safety first)
