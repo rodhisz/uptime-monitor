@@ -81,6 +81,8 @@ def check_uptime(test_mode=False):
     was_down = state.get("is_down", False)
     down_start_time_str = state.get("down_start_time")
     
+    print(f"DEBUG: Loaded state: is_down={was_down}, start={down_start_time_str}")
+
     is_currently_down = False
     status_code = None
     error_details = ""
